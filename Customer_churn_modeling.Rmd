@@ -1,0 +1,520 @@
+---
+title: "Stat_project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Preprocessing
+## 1. Loading dataset
+```{r}
+churn_dataset <- read.csv("Churn_Modelling.csv")
+```
+
+## 2. Removing columns
+Removing RowNumber,CustomerId and Surname as they do not impact target variable.
+
+```{r}
+keeps <- c("CreditScore","Geography","Gender","Age","Tenure","Balance","NumOfProducts","HasCrCard",       "IsActiveMember","EstimatedSalary","Exited")
+df = churn_dataset[keeps]
+```
+
+## 3.Check for missing values
+No missing values in dataset
+```{r}
+print(which(is.na(df$CreditScore)))
+print(which(is.na(df$Geography)))
+print(which(is.na(df$Gender)))
+print(which(is.na(df$Age)))
+print(which(is.na(df$Tenure)))
+print(which(is.na(df$Balance)))
+print(which(is.na(df$NumOfProducts)))
+print(which(is.na(df$HasCrCard)))
+print(which(is.na(df$IsActiveMember)))
+print(which(is.na(df$EstimatedSalary)))
+print(which(is.na(df$Exited)))
+```
+## 4.Checking datatypes of columns
+```{r}
+library(purrr)
+map(df, class)
+```
+## 5. Checking correlation
+No significant correlation among predictor variables.
+```{r}
+df.sub_set <- subset(df, select = c("CreditScore","Age","Tenure","Balance","NumOfProducts","HasCrCard",       "IsActiveMember","EstimatedSalary","Exited"))
+round(cor(df.sub_set, use = "complete.obs"), 2)
+```
+
+## 6. Check for outliers
+Creditscore
+```{r}
+boxplot(df$CreditScore,
+  ylab = "CreditScore",color="blue"
+)
+out <- boxplot.stats(df$CreditScore)$out
+print(out)
+out_ind_creditscore <- which(df$CreditScore %in% c(out))
+print(out_ind_creditscore)
+```
+Age
+```{r}
+boxplot(df$Age,
+  ylab = "Age")
+out <- boxplot.stats(df$Age)$out
+print(out)
+out_ind_Age <- which(df$Age %in% c(out))
+print(out_ind_Age)
+```
+Excluding outliers in creditscore and age
+
+```{r}
+x<-df[-c(out_ind_creditscore),]
+y<-x[-c(out_ind_Age),]
+df<-y
+nrow(df)
+```
+## Observations
+```{r}
+install.packages('tidyverse')
+library(tidyverse)
+
+
+plotdata <- df %>%
+  group_by(Geography, Exited) %>%
+  summarize(n = n()) %>% 
+  mutate(pct = n/sum(n),
+         lbl = scales::percent(pct))
+
+ggplot(plotdata, 
+       aes(x = factor(Geography,
+                      ),
+           y = pct,
+           fill = factor(Exited))) + 
+  geom_bar(stat = "identity",
+           position = "fill") +
+  geom_text(aes(label = lbl), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(y = "Percent", 
+       fill = "Exited",
+       x = "Geography",
+       title = "Geography vs Exited") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(data=df, mapping = aes(x = Balance, y = Age)) + 
+  geom_point(aes(color = Exited)) +
+  theme_bw()
+```
+
+```{r}
+df$Age_binned = cut(df$Age, breaks=c(0, 5, 10, 15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100))
+```
+
+```{r}
+colnames(df)
+```
+
+
+```{r}
+#df$Exited <-as.factor(df$IsActiveMember)
+ggplot(df, aes(x = IsActiveMember, fill = Exited)) +
+    geom_bar(position = position_dodge()) +
+    theme_classic()
+
+plotdata <- df %>%
+  group_by(IsActiveMember, Exited) %>%
+  summarize(n = n()) %>% 
+  mutate(pct = n/sum(n),
+         lbl = scales::percent(pct))
+
+ggplot(plotdata, 
+       aes(x = factor(IsActiveMember,
+                      ),
+           y = pct,
+           fill = factor(Exited))) + 
+  geom_bar(stat = "identity",
+           position = "fill") +
+  geom_text(aes(label = lbl), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(y = "Percent", 
+       fill = "Exited",
+       x = "IsActiveMember",
+       title = "IsActiveMember vs Exited") +
+  theme_minimal()
+```
+```{r}
+
+library(dplyr)
+plotdata <- df %>%
+  group_by(Age_binned, Exited) %>%
+  summarize(n = n()) %>% 
+  mutate(pct = n/sum(n),
+         lbl = scales::percent(pct))
+plotdata
+
+```
+
+```{r}
+ggplot(plotdata, 
+       aes(x = factor(Age_binned,
+                      ),
+           y = pct,
+           fill = factor(Exited))) + 
+  geom_bar(stat = "identity",
+           position = "fill") +
+  geom_text(aes(label = lbl), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(y = "Percent", 
+       fill = "Exited",
+       x = "Age",
+       title = "Age vs Exited") +
+  theme_minimal()
+```
+
+## 7. Creating dummay variables
+
+```{r}
+df$Gender_M <- ifelse(df$Gender == 'Male', 1, 0)
+df$Gender_F <- ifelse(df$Gender == 'Female', 1, 0)
+
+df$Geo_France <- ifelse(df$Geography == 'France', 1, 0)
+df$Geo_spain <- ifelse(df$Geography == 'Spain', 1, 0)
+df$Geo_Germany<-ifelse(df$Geography=='Germany',1,0)
+```
+
+Removing unwanted columns
+```{r}
+Data <- subset( df, select = -c(Geography,Gender,Gender_F,Geo_Germany) )
+```
+
+##8.Visualizations
+
+```{r}
+hist(Data$Age)
+hist(Data$Tenure)
+hist(Data$Balance)
+hist(Data$EstimatedSalary)
+```
+# Splitting dataset for training and testing
+```{r}
+set.seed(123)
+dt = sort(sample(nrow(Data), nrow(Data)*.7))
+train<-Data[dt,]
+test<-Data[-dt,]
+print(nrow(train))
+print(nrow(test))
+colnames(train)
+```
+## Standardizing train set
+
+```{r}
+train$CreditScore<-scale(train$CreditScore)
+train$Balance<-scale(train$Balance)
+train$EstimatedSalary<-scale(train$EstimatedSalary)
+test$CreditScore<-scale(test$CreditScore)
+test$Balance<-scale(test$Balance)
+test$EstimatedSalary<-scale(test$EstimatedSalary)
+table(train$Exited)
+```
+Excluding target variable from train and test data
+```{r}
+test1 <- subset( test, select = -c(Exited) )
+train1<-subset( train,select= -c(Exited))
+```
+
+# Modeling
+
+## 1. Logistic regression
+```{r}
+
+logistic.mod <- glm(Exited ~ CreditScore + log(Age)+Tenure+Balance + NumOfProducts + HasCrCard + EstimatedSalary+ IsActiveMember + Gender_M  + Geo_France + Geo_spain  , family=binomial("logit"), data=train)
+
+summary(logistic.mod)
+
+```
+Accuracy for train dataset
+```{r}
+predict_reg_train <- predict(logistic.mod, 
+                       train1, type = "response")
+predict_reg_train <- ifelse(predict_reg_train >0.5, 1, 0)
+missing_classerr <- mean(predict_reg_train != train$Exited)
+print(paste('Accuracy =', 1 - missing_classerr))
+table(train$Exited, predict_reg_train)
+```
+Accuracy for test set when all predictors are used
+```{r}
+predict_reg_test <- predict(logistic.mod, 
+                       test1, type = "response")
+predict_reg_test <- ifelse(predict_reg_test >0.5, 1, 0)
+missing_classerr <- mean(predict_reg_test != test$Exited)
+print(paste('Accuracy =', 1 - missing_classerr))
+cf<-table(test$Exited, predict_reg_test)
+library(caret)
+confusionMatrix(cf)
+```
+ROC for logistic regression
+```{r}
+install.packages("ROCR")
+library("ROCR")
+
+pred.2 <- prediction(predict_reg_test,test$Exited)
+
+perf2 <- performance(pred.2, "tpr", "fpr")
+
+auc.perf2<- performance(pred.2,"auc") 
+auc.perf2@y.values
+plot(perf2, main = paste("Area under the curve", round(as.numeric(auc.perf2@y.values), 4)))
+abline(0,1)
+
+```
+Lift curve for logistic regression
+```{r}
+lift_curve <- performance(pred.2,"lift","rpp")
+plot(lift_curve, main="Lift curve", colorize=T)
+```
+F1 score for test dataset
+```{r}
+f <- c() 
+
+for (i in seq(0,0.99,0.01) )
+{
+
+predict_reg <- predict(logistic.mod,test1, type = "response")
+predict_reg <- ifelse(predict_reg >i, 1, 0)
+tp <- sum((test$Exited == 1) & (predict_reg == 1))
+tn <- sum((test$Exited  ==0) & (predict_reg == 0))
+fp <- sum((test$Exited == 0) & (predict_reg== 1))
+fn <- sum((test$Exited == 1) & (predict_reg == 0))
+F1 <- tp/(tp+(fp+fn)/2)
+f = append(f, F1)
+}
+i = seq(0,0.99,0.01)
+plot(x=i,y=f)
+lines(f~i)
+```
+Model has highest F1-score (0.49) at 0.3 cutoff.
+```{r}
+df <- data.frame(f,i)
+
+for(j in 1:length(f))
+{
+  if(df$f[j]==max(df$f))
+  {
+    print(df$i[j])
+  }
+  
+}
+
+Max=max(df$f)
+Max
+```
+### Variable selection
+Since  p-values of creditscore,tenure,Hascrcard,Estimated salary are greater than significant alpha value, these can be excluded.
+
+Refined test dataset
+```{r}
+train2<-subset( train1, select = -c(CreditScore,Tenure,HasCrCard,EstimatedSalary) )
+test2 <- subset( test1, select = -c(CreditScore,Tenure,HasCrCard,EstimatedSalary) )
+colnames(train2)
+```
+```{r}
+logistic.mod2 <- glm(train$Exited ~  log(Age)+Balance + NumOfProducts + IsActiveMember + Gender_M  + Geo_France + Geo_spain  , family=binomial("logit"),
+                    data=train2)
+summary(logistic.mod2)
+```
+No increase in accuracy. Hence variables should not be excluded.
+```{r}
+predict_reg2 <- predict(logistic.mod2, 
+                       test2, type = "response")
+predict_reg2 <- ifelse(predict_reg2 >0.5, 1, 0)
+missing_classerr <- mean(predict_reg2 != test$Exited)
+print(paste('Accuracy =', 1 - missing_classerr))
+table(test$Exited, predict_reg2)
+```
+
+## Decision Tree
+Fitting for decision tree
+```{r}
+
+library(rpart)
+control <- rpart.control(minsplit = 5,
+    minbucket = round(5/ 3),
+    maxdepth = 3)
+fit <- rpart(Exited~ CreditScore + log(Age)+Tenure+Balance + NumOfProducts + HasCrCard + EstimatedSalary+ IsActiveMember + Gender_M  + Geo_France + Geo_spain, data = train, method = 'class',control = control)
+
+```
+
+```{r}
+#install.packages("rpart.plot") 
+library(rpart.plot)
+rpart.plot(fit)
+```
+
+Prediction for training dataset
+```{r}
+predict_unseen <-predict(fit, train1, type = 'prob')[,2]
+predict_unseen <- ifelse(predict_unseen >0.5, 1, 0)
+missing_classerr <- mean(predict_unseen != train$Exited)
+print(paste('Accuracy =', 1 - missing_classerr))
+table(train$Exited, predict_unseen)
+```
+Prediction for test set:
+```{r}
+predict_unseen <-predict(fit, test1, type = 'prob')[,2]
+```
+ 
+Accuracy and confusion matrix for test set:
+```{r}
+predict_unseen <- ifelse(predict_unseen >0.5, 1, 0)
+missing_classerr <- mean(predict_unseen != test$Exited)
+print(paste('Accuracy =', 1 - missing_classerr))
+cf<-table(test$Exited, predict_unseen)
+confusionMatrix(cf)
+```
+ROC curve
+```{r}
+pred.2 <- prediction(predict_unseen,test$Exited)
+perf <- performance(pred.2, "tpr", "fpr")
+auc.perf <- performance(pred.2,"auc") 
+auc.perf@y.values
+plot(perf, main = paste("Area under the curve", round(as.numeric(auc.perf@y.values), 4)))
+abline(0,1)
+```
+LIFT curve:
+```{r}
+lift_curve <- performance(pred.2,"lift","rpp")
+plot(lift_curve, main="Lift curve", colorize=T)
+```
+
+F1 Score:
+```{r}
+f <- c() 
+
+for (i in seq(0,0.99,0.01) )
+{
+
+predict_unseen <- predict(fit,test1, type = "prob")[,2]
+predict_unseen <- ifelse(predict_unseen >i, 1, 0)
+tp <- sum((test$Exited == 1) & (predict_unseen == 1))
+tn <- sum((test$Exited  ==0) & (predict_unseen == 0))
+fp <- sum((test$Exited == 0) & (predict_unseen== 1))
+fn <- sum((test$Exited == 1) & (predict_unseen == 0))
+F1 <- tp/(tp+(fp+fn)/2)
+f = append(f, F1)
+}
+i = seq(0,0.99,0.01)
+plot(x=i,y=f)
+lines(f~i)
+```
+Model has highest F1-Value(0.5296) at various points.
+```{r}
+df <- data.frame(f,i)
+
+for(j in 1:length(f))
+{
+  if(df$f[j]==max(df$f))
+  {
+    print(df$i[j])
+  }
+  
+}
+
+Max=max(df$f)
+Max
+```
+
+## Random Forest
+```{r}
+train$Exited <-as.factor(train$Exited)
+```
+
+```{r}
+
+library(randomForest)
+rf <- randomForest(Exited ~ ., data = train, importance = TRUE, proximity = TRUE)
+
+```
+```{r}
+print(rf)
+```
+
+Accuracy for train dataset
+```{r}
+pred = predict(rf, newdata=train1,type='prob')[,2]
+pred <- ifelse(pred >0.5, 1, 0)
+missing_classerr <- mean(pred != train$Exited)
+print(paste('Accuracy =', 1 - missing_classerr))
+table(train$Exited, pred)
+```
+
+Prediction for test set
+```{r}
+pred = predict(rf, newdata=test1,type='prob')[,2]
+pred <- ifelse(pred >0.5, 1, 0)
+missing_classerr <- mean(pred != test$Exited)
+print(paste('Accuracy =', 1 - missing_classerr))
+cf<-table(test$Exited, pred)
+confusionMatrix(cf)
+```
+ROC curve
+```{r}
+pred.2 <- prediction(pred,test$Exited)
+perf <- performance(pred.2, "tpr", "fpr")
+auc.perf <- performance(pred.2,"auc") 
+auc.perf@y.values
+plot(perf, main = paste("Area under the curve", round(as.numeric(auc.perf@y.values), 4)))
+abline(0,1)
+```
+LIFT curve
+```{r}
+lift_curve <- performance(pred.2,"lift","rpp")
+plot(lift_curve, main="Lift curve", colorize=T)
+```
+
+F1 Score
+```{r}
+f <- c() 
+
+for (i in seq(0,0.99,0.01) )
+{
+
+predict_unseen <- predict(rf,test1, type = "prob")[,2]
+predict_unseen <- ifelse(predict_unseen >i, 1, 0)
+tp <- sum((test$Exited == 1) & (predict_unseen == 1))
+tn <- sum((test$Exited  ==0) & (predict_unseen == 0))
+fp <- sum((test$Exited == 0) & (predict_unseen== 1))
+fn <- sum((test$Exited == 1) & (predict_unseen == 0))
+F1 <- tp/(tp+(fp+fn)/2)
+f = append(f, F1)
+}
+i = seq(0,0.99,0.01)
+plot(x=i,y=f)
+lines(f~i)
+```
+Model has highest F1-Value(.34) at 0.61 cutoff.
+```{r}
+df <- data.frame(f,i)
+
+for(j in 1:length(f))
+{
+  if(df$f[j]==max(df$f))
+  {
+    print(df$i[j])
+  }
+  
+}
+
+Max=max(df$f)
+Max
+```
+
