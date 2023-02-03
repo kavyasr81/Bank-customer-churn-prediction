@@ -21,5 +21,7 @@
    
 Resource: https://www.kaggle.com/datasets/shantanudhakadd/bank-customer-churn-prediction
 
+R project file: Customer_churn_modeling
+
 
 
